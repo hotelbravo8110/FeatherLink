@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FEATHER NET Settings</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root { color-scheme: dark; --bg: #10120f; --panel: #1c2019; --raise: #252a21; --line: #2f352b; --ink: #ece7da; --ink-2: #c8c4b7; --mute: #8f8b7f; --brass: #c9a45c; --ok: #8fbf7a; --bad: #e07a5f; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 "B612", "Segoe UI", system-ui, sans-serif; }
+main { padding: 22px 26px 28px; }
+h1 { font-size: 13px; letter-spacing: .18em; color: var(--brass); margin: 0 0 18px; font-weight: 700; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 16px 14px; margin-bottom: 14px; }
+h2 { font-size: 15px; margin: 0 0 4px; }
+p { margin: 4px 0 10px; color: var(--ink-2); font-size: 13px; }
+label { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); margin: 10px 0 4px; }
+input, select { width: 100%; padding: 8px 10px; background: var(--raise); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+input:focus, select:focus { outline: 2px solid var(--brass); outline-offset: -1px; }
+.row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.two { display: grid; grid-template-columns: 1fr 130px; gap: 10px; }
+button { padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--raise); color: var(--ink); font: inherit; cursor: pointer; }
+button.primary { background: var(--brass); color: #1a1a14; border-color: var(--brass); font-weight: 700; }
+button:disabled { opacity: .5; cursor: default; }
+a { color: var(--brass); }
+.msg { font-size: 13px; color: var(--ink-2); }
+.msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); }
+.foot { display: flex; justify-content: flex-end; gap: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>FEATHER NET · SETTINGS</h1>
+
+  <section>
+    <h2>Claude (story desk)</h2>
+    <p>Claude writes the briefs, crew calls and replies. Paste your Claude API key from <a href="https://console.anthropic.com/settings/keys">console.anthropic.com</a>. It is stored encrypted on this PC and only sent to Anthropic.</p>
+    <label for="key">API key</label>
+    <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…">
+    <label for="model">Model</label>
+    <select id="model"></select>
+    <div class="row">
+      <button id="test">Test key</button>
+      <button id="clear">Remove key</button>
+      <span id="keymsg" class="msg"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>X-Plane 12 (FEATHER LINK)</h2>
+    <p>Leave the address as 127.0.0.1 when X-Plane runs on this PC. If it runs on another computer, enter that computer's network address, for example 192.168.1.40.</p>
+    <div class="two">
+      <div><label for="host">X-Plane computer</label><input id="host" spellcheck="false"></div>
+      <div><label for="port">UDP port</label><input id="port" type="number" min="1024" max="65535"></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span id="savemsg" class="msg" style="margin-right:auto;align-self:center"></span>
+    <button id="close">Close</button>
+    <button id="save" class="primary">Save</button>
+  </div>
+</main>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const call = async (ch, arg) => { const r = await window.featherHost.invoke(ch, arg); if (r && r.ok) return r.value; throw r.error; };
+  let view = null;
+
+  function show(v) {
+    view = v;
+    $('key').value = '';
+    $('key').placeholder = v.hasKey ? 'Saved key ' + v.keyHint + (v.keyFromEnv ? ' (from ANTHROPIC_API_KEY)' : '') + '. Paste a new one to replace it.' : 'sk-ant-…';
+    $('clear').disabled = !v.hasKey || v.keyFromEnv;
+    $('model').innerHTML = v.models.map(m => '<option value="' + m.id + '">' + m.label + '</option>').join('');
+    $('model').value = v.model;
+    $('host').value = v.xplaneHost;
+    $('port').value = v.xplanePort;
+  }
+  function msg(id, text, cls) { $(id).textContent = text; $(id).className = 'msg' + (cls ? ' ' + cls : ''); }
+
+  $('test').onclick = async () => {
+    msg('keymsg', 'Checking…');
+    $('test').disabled = true;
+    try {
+      const r = await call('settings:test', { apiKey: $('key').value, model: $('model').value });
+      msg('keymsg', r.ok ? 'Key works.' : (r.message || r.code), r.ok ? 'ok' : 'bad');
+    } catch (e) { msg('keymsg', (e && e.message) || 'Check failed.', 'bad'); }
+    $('test').disabled = false;
+  };
+  $('clear').onclick = async () => { show(await call('settings:set', { clearKey: true })); msg('keymsg', 'Key removed.'); };
+  $('save').onclick = async () => {
+    try {
+      show(await call('settings:set', { apiKey: $('key').value, model: $('model').value, xplaneHost: $('host').value, xplanePort: Number($('port').value) }));
+      msg('savemsg', 'Saved.', 'ok');
+    } catch (e) { msg('savemsg', (e && e.message) || 'Couldn’t save.', 'bad'); }
+  };
+  $('close').onclick = () => window.close();
+  call('settings:get').then(show);
+})();
+</script>
+</body>
+</html>

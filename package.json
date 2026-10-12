@@ -1,0 +1,43 @@
+{
+  "name": "feather-net",
+  "productName": "FEATHER NET",
+  "version": "1.0.0",
+  "description": "Crew, dispatch and story desk for X-Plane 12, with FEATHER LINK built in.",
+  "author": "Hunter Ferraro",
+  "license": "MIT",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist:win": "electron-builder --win --x64",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux AppImage"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.feathernet.app",
+    "productName": "FEATHER NET",
+    "files": ["electron/**", "app/**", "build/icon.png", "package.json"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [{ "target": "portable", "arch": ["x64"] }, { "target": "nsis", "arch": ["x64"] }]
+    },
+    "portable": { "artifactName": "FEATHER-NET-${version}-portable.exe" },
+    "nsis": {
+      "artifactName": "FEATHER-NET-Setup-${version}.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "FEATHER NET"
+    },
+    "mac": { "icon": "build/icon.png", "category": "public.app-category.games", "target": ["dmg"] },
+    "linux": { "icon": "build/icon.png", "category": "Game", "target": ["AppImage"] }
+  }
+}
